@@ -1,0 +1,12 @@
+app:
+  jwt:
+    secret: test-jwt-secret-that-is-at-least-32-bytes-long
+    expiration-ms: 3600000
+  bootstrap-admin:
+    email: ""
+    password: ""
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
