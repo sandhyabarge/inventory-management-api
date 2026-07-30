@@ -72,9 +72,46 @@ docker compose up --build
 
 Prerequisites: JDK 21, Maven 3.9+, and Docker Desktop.
 
+### Recommended: one-command local runner
+
+The PowerShell runner detects the active Docker Desktop context, configures Testcontainers with its named pipe and API version, and then runs the integration test:
+
 ```powershell
-mvn test
+.\run-local-tests.ps1
 ```
+
+Run a different test class with:
+
+```powershell
+.\run-local-tests.ps1 -Test SomeOtherIntegrationTest
+```
+
+### Run from IntelliJ
+
+The repository contains a shared `AuthUserIntegrationTest` run configuration for Docker Desktop on Windows:
+
+1. Start Docker Desktop and wait for **Engine running**.
+2. Confirm Docker is using the `desktop-linux` context.
+3. Open **Run > Run... > AuthUserIntegrationTest**.
+4. Select the shared configuration instead of generating a temporary configuration from the gutter.
+
+The shared configuration supplies:
+
+```text
+DOCKER_HOST=npipe:////./pipe/dockerDesktopLinuxEngine
+DOCKER_API_VERSION=1.55
+Java VM option: -Dapi.version=1.55
+```
+
+The Java VM option is required with Docker 29. `DOCKER_API_VERSION` configures the Docker CLI, while Testcontainers communicates through docker-java, which reads the `api.version` Java property.
+
+If your Docker installation reports a different endpoint, run:
+
+```powershell
+docker context inspect desktop-linux --format '{{.Endpoints.docker.Host}}'
+```
+
+and update `.run/AuthUserIntegrationTest.run.xml`.
 
 The tests start an isolated `postgres:17-alpine` container and verify:
 
@@ -86,7 +123,7 @@ The tests start an isolated `postgres:17-alpine` container and verify:
 - Duplicate registration
 - Request validation and Problem Details responses
 
-Tests are skipped gracefully when Docker is unavailable.
+Tests fail when Docker is unavailable, preventing a skipped suite from being mistaken for a successful test run.
 
 ## Configuration
 
