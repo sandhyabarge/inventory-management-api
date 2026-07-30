@@ -1,8 +1,8 @@
 # Inventory Management API
 
-First milestone of a multi-warehouse inventory management backend built with Java 21 and Spring Boot.
+Multi-warehouse inventory management backend built with Java 21 and Spring Boot.
 
-This milestone provides secure user registration, JWT login, role administration, Swagger UI, PostgreSQL migrations, Docker deployment, and PostgreSQL Testcontainers integration tests.
+The API provides secure user registration, JWT login, role administration, a predefined catalog, supplier stock purchases, warehouse-level stock balances, Swagger UI, PostgreSQL migrations, Docker deployment, and PostgreSQL Testcontainers integration tests.
 
 ## Roles
 
@@ -22,6 +22,11 @@ Public registration deliberately cannot request an elevated role. An administrat
 | `GET` | `/api/users/me` | Authenticated | View the current profile |
 | `GET` | `/api/users` | `ADMIN` | List users |
 | `PATCH` | `/api/users/{id}/role` | `ADMIN` | Assign a role |
+| `GET` | `/api/catalog/products` | Authenticated | List 5 predefined products |
+| `GET` | `/api/catalog/suppliers` | Authenticated | List 3 predefined suppliers |
+| `GET` | `/api/catalog/warehouses` | Authenticated | List 3 predefined warehouses |
+| `POST` | `/api/purchases` | `ADMIN`, `PURCHASING_AGENT` | Purchase and immediately receive stock |
+| `GET` | `/api/stocks` | Authenticated | List available stock, with optional filters |
 | `GET` | `/actuator/health` | Public | Health check |
 
 ## Run with Docker
@@ -66,7 +71,45 @@ docker compose up --build
 4. Select **Authorize** and enter the token. Swagger adds the `Bearer` prefix.
 5. Call `GET /api/users`.
 6. Register a normal user.
-7. Use `PATCH /api/users/{id}/role` to assign `INVENTORY_MANAGER`.
+7. Use `PATCH /api/users/{id}/role` to assign `PURCHASING_AGENT`.
+8. Use the catalog endpoints to obtain IDs, then call `POST /api/purchases`.
+9. Call `GET /api/stocks` to verify the new balance.
+
+Example purchase:
+
+```json
+{
+  "reference": "PO-1001",
+  "supplierId": 1,
+  "warehouseId": 1,
+  "items": [
+    {
+      "productId": 1,
+      "quantity": 10,
+      "unitCost": 12.50
+    }
+  ]
+}
+```
+
+Each reference must be unique. A successful purchase is received immediately, so its
+quantities are added to the selected warehouse in the same database transaction.
+List positive balances with `GET /api/stocks`, or filter with
+`?warehouseId=1&productId=1`.
+
+## Predefined catalog
+
+Products:
+
+- `SKU-LAPTOP-STAND` - Adjustable Laptop Stand
+- `SKU-WIRELESS-MOUSE` - Wireless Mouse
+- `SKU-KEYBOARD` - Mechanical Keyboard
+- `SKU-USB-C-HUB` - USB-C Hub
+- `SKU-MONITOR-24` - 24-inch Monitor
+
+Suppliers: `SUP-TECHSOURCE`, `SUP-OFFICEPRO`, and `SUP-GLOBAL`.
+
+Warehouses: `WH-NORTH`, `WH-CENTRAL`, and `WH-SOUTH`.
 
 ## Run integration tests
 
@@ -122,6 +165,11 @@ The tests start an isolated `postgres:17-alpine` container and verify:
 - Viewer authorization rejection
 - Duplicate registration
 - Request validation and Problem Details responses
+- Predefined products, suppliers, and warehouses
+- Purchasing-agent authorization
+- Immediate warehouse stock updates
+- Stock accumulation and filters
+- Duplicate purchase-reference rejection
 
 Tests fail when Docker is unavailable, preventing a skipped suite from being mistaken for a successful test run.
 
@@ -139,7 +187,3 @@ Tests fail when Docker is unavailable, preventing a skipped suite from being mis
 | `BOOTSTRAP_ADMIN_DISPLAY_NAME` | Initial administrator name |
 
 Flyway owns the database schema. Hibernate uses `ddl-auto=validate`.
-
-## Next milestone
-
-Add warehouses, products, categories, and warehouse-level inventory balances with role-protected REST endpoints.

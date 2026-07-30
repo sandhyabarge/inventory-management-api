@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="PurchaseStockIntegrationTest" type="JUnit" factoryName="JUnit">
+    <envs>
+      <env name="DOCKER_API_VERSION" value="1.55" />
+      <env name="DOCKER_HOST" value="npipe:////./pipe/dockerDesktopLinuxEngine" />
+    </envs>
+    <module name="inventory-management-api" />
+    <option name="VM_PARAMETERS" value="-Dapi.version=1.55" />
+    <option name="PACKAGE_NAME" value="" />
+    <option name="MAIN_CLASS_NAME" value="com.portfolio.inventory.PurchaseStockIntegrationTest" />
+    <option name="METHOD_NAME" value="" />
+    <option name="TEST_OBJECT" value="class" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
