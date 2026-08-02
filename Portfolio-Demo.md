@@ -17,6 +17,8 @@ warehouse balances, database migrations, API documentation and automated integra
 - Swagger/OpenAPI documentation
 - Docker Compose deployment
 - PostgreSQL integration testing with Testcontainers
+- GitHub Actions continuous integration
+- Immutable stock-receipt audit history
 
 ## Interactive API documentation
 
@@ -82,9 +84,20 @@ between purchasing and approval responsibilities.
 
 Approved products may be received in one or several deliveries. The API tracks ordered,
 received and outstanding quantities, prevents over-receipt, and updates warehouse stock in
-the same database transaction.
+the same database transaction. Every delivery is retained with its product, quantity,
+receiver and timestamp for audit purposes.
 
 ![Receiving stock against a purchase order](docs/receive%20purchase%20order.png)
+
+A first delivery moves the order to `PARTIALLY_RECEIVED` while clearly showing the remaining
+outstanding quantity.
+
+![Partially received purchase order](docs/partially%20received%20order.png)
+
+The receipt-history endpoint provides an auditable record of each delivery, including the
+received product, quantity, user and timestamp.
+
+![Purchase order receipt history](docs/purchase%20order%20receipts.png)
 
 ### Purchase-order cancellation rules
 

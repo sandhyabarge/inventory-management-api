@@ -15,6 +15,11 @@ public final class PurchaseDtos {
             @NotNull @Positive Long warehouseId,
             @NotEmpty List<@Valid PurchaseItemRequest> items) {}
 
+    public record UpdateDraftRequest(
+            @NotNull @Positive Long supplierId,
+            @NotNull @Positive Long warehouseId,
+            @NotEmpty List<@Valid PurchaseItemRequest> items) {}
+
     public record PurchaseItemRequest(
             @NotNull @Positive Long productId,
             @Positive long quantity,
@@ -28,11 +33,20 @@ public final class PurchaseDtos {
             @NotNull @Positive Long productId,
             @Positive long quantity) {}
 
+    public record ReceiptResponse(Long id, Long productId, String sku, long quantity,
+            String receivedByEmail, Instant receivedAt) {
+        static ReceiptResponse from(StockReceipt receipt) {
+            return new ReceiptResponse(receipt.getId(), receipt.getProduct().getId(),
+                    receipt.getProduct().getSku(), receipt.getQuantity(),
+                    receipt.getReceivedByEmail(), receipt.getReceivedAt());
+        }
+    }
+
     public record PurchaseItemResponse(
             Long productId, String sku, String productName, long orderedQuantity,
             long receivedQuantity, long outstandingQuantity, BigDecimal unitCost,
             BigDecimal lineTotal) {
-        static PurchaseItemResponse from(StockPurchaseItem item) {
+        static PurchaseItemResponse from(PurchaseOrderItem item) {
             return new PurchaseItemResponse(item.getProduct().getId(), item.getProduct().getSku(),
                     item.getProduct().getName(), item.getQuantity(), item.getReceivedQuantity(),
                     item.getQuantity() - item.getReceivedQuantity(), item.getUnitCost(),
@@ -46,7 +60,7 @@ public final class PurchaseDtos {
             Instant createdAt, Instant submittedAt, Instant approvedAt,
             String createdByEmail, String approvedByEmail, Instant cancelledAt,
             BigDecimal totalCost, List<PurchaseItemResponse> items) {
-        static PurchaseResponse from(StockPurchase purchase) {
+        static PurchaseResponse from(PurchaseOrder purchase) {
             return new PurchaseResponse(purchase.getId(), purchase.getReference(),
                     purchase.getStatus(), purchase.getSupplier().getId(),
                     purchase.getSupplier().getCode(), purchase.getWarehouse().getId(),

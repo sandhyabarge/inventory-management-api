@@ -45,6 +45,14 @@ public class PurchaseController {
     @Operation(summary = "Submit a draft purchase order")
     public PurchaseResponse submit(@PathVariable Long id) { return service.submit(id); }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PURCHASING_AGENT')")
+    @Operation(summary = "Edit supplier, warehouse and items while an order is DRAFT")
+    public PurchaseResponse updateDraft(@PathVariable Long id,
+            @Valid @RequestBody UpdateDraftRequest request) {
+        return service.updateDraft(id, request);
+    }
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('ADMIN', 'INVENTORY_MANAGER')")
     @Operation(summary = "Approve a submitted purchase order")
@@ -56,8 +64,14 @@ public class PurchaseController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INVENTORY_MANAGER')")
     @Operation(summary = "Receive some or all outstanding stock")
     public PurchaseResponse receive(@PathVariable Long id,
-            @Valid @RequestBody ReceivePurchaseRequest request) {
-        return service.receive(id, request);
+            @Valid @RequestBody ReceivePurchaseRequest request, Authentication authentication) {
+        return service.receive(id, request, authentication.getName());
+    }
+
+    @GetMapping("/{id}/receipts")
+    @Operation(summary = "List the immutable stock receipt history for an order")
+    public java.util.List<ReceiptResponse> receipts(@PathVariable Long id) {
+        return service.receipts(id);
     }
 
     @PostMapping("/{id}/cancel")

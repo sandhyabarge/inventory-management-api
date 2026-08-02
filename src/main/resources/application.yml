@@ -27,7 +27,7 @@ server:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:local-development-jwt-secret-change-me-123456789}
+    secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   bootstrap-admin:
     email: ${BOOTSTRAP_ADMIN_EMAIL:}

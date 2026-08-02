@@ -29,8 +29,10 @@ Public registration deliberately cannot request an elevated role. An administrat
 | `GET` | `/api/purchases` | Authenticated | List orders, optionally filtered by status |
 | `GET` | `/api/purchases/{id}` | Authenticated | View an order and receipt progress |
 | `POST` | `/api/purchases/{id}/submit` | `ADMIN`, `PURCHASING_AGENT` | Submit a draft |
+| `PUT` | `/api/purchases/{id}` | `ADMIN`, `PURCHASING_AGENT` | Edit a draft order |
 | `POST` | `/api/purchases/{id}/approve` | `ADMIN`, `INVENTORY_MANAGER` | Approve a submitted order |
 | `POST` | `/api/purchases/{id}/receive` | `ADMIN`, `INVENTORY_MANAGER` | Receive partial or full quantities |
+| `GET` | `/api/purchases/{id}/receipts` | Authenticated | View immutable receipt history |
 | `POST` | `/api/purchases/{id}/cancel` | `ADMIN`, `PURCHASING_AGENT` | Cancel an eligible order |
 | `GET` | `/api/stocks` | Authenticated | List available stock, with optional filters |
 | `GET` | `/actuator/health` | Public | Health check |
@@ -42,6 +44,8 @@ Prerequisite: Docker Desktop with the Linux container engine running.
 For local demonstration:
 
 ```powershell
+Copy-Item .env.example .env
+# Replace all placeholders in .env
 docker compose up --build
 ```
 

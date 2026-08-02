@@ -6,12 +6,12 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "stock_purchase_items")
-public class StockPurchaseItem {
+public class PurchaseOrderItem {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "purchase_id", nullable = false)
-    private StockPurchase purchase;
+    private PurchaseOrder purchase;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
@@ -22,9 +22,9 @@ public class StockPurchaseItem {
     @Column(name = "received_quantity", nullable = false)
     private long receivedQuantity;
 
-    protected StockPurchaseItem() {}
+    protected PurchaseOrderItem() {}
 
-    public StockPurchaseItem(StockPurchase purchase, Product product, long quantity,
+    public PurchaseOrderItem(PurchaseOrder purchase, Product product, long quantity,
             BigDecimal unitCost) {
         this.purchase = purchase;
         this.product = product;

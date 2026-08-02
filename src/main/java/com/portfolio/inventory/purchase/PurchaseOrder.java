@@ -9,7 +9,7 @@ import java.util.*;
 
 @Entity
 @Table(name = "stock_purchases")
-public class StockPurchase {
+public class PurchaseOrder {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @Column(nullable = false, unique = true, length = 80)
@@ -38,11 +38,11 @@ public class StockPurchase {
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
     @OneToMany(mappedBy = "purchase", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<StockPurchaseItem> items = new ArrayList<>();
+    private List<PurchaseOrderItem> items = new ArrayList<>();
 
-    protected StockPurchase() {}
+    protected PurchaseOrder() {}
 
-    public StockPurchase(String reference, Supplier supplier, Warehouse warehouse,
+    public PurchaseOrder(String reference, Supplier supplier, Warehouse warehouse,
             String createdByEmail) {
         this.reference = reference;
         this.supplier = supplier;
@@ -53,9 +53,19 @@ public class StockPurchase {
         this.status = PurchaseStatus.DRAFT;
     }
 
-    public void addItem(StockPurchaseItem item) {
+    public void addItem(PurchaseOrderItem item) {
         items.add(item);
         totalCost = totalCost.add(item.lineTotal());
+    }
+
+    public void replaceDraftDetails(Supplier supplier, Warehouse warehouse,
+            List<PurchaseOrderItem> replacementItems) {
+        requireStatus(PurchaseStatus.DRAFT);
+        this.supplier = supplier;
+        this.warehouse = warehouse;
+        items.clear();
+        totalCost = BigDecimal.ZERO;
+        replacementItems.forEach(this::addItem);
     }
 
     public void submit() {
@@ -72,7 +82,7 @@ public class StockPurchase {
     }
 
     public void refreshReceiptStatus() {
-        boolean allReceived = items.stream().allMatch(StockPurchaseItem::isFullyReceived);
+        boolean allReceived = items.stream().allMatch(PurchaseOrderItem::isFullyReceived);
         boolean anyReceived = items.stream().anyMatch(item -> item.getReceivedQuantity() > 0);
         status = allReceived ? PurchaseStatus.RECEIVED
                 : anyReceived ? PurchaseStatus.PARTIALLY_RECEIVED : PurchaseStatus.APPROVED;
@@ -101,7 +111,7 @@ public class StockPurchase {
     public Instant getPurchasedAt() { return purchasedAt; }
     public String getCreatedByEmail() { return createdByEmail; }
     public BigDecimal getTotalCost() { return totalCost; }
-    public List<StockPurchaseItem> getItems() { return List.copyOf(items); }
+    public List<PurchaseOrderItem> getItems() { return List.copyOf(items); }
     public PurchaseStatus getStatus() { return status; }
     public Instant getSubmittedAt() { return submittedAt; }
     public Instant getApprovedAt() { return approvedAt; }

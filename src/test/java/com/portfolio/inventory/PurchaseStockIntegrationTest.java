@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.portfolio.inventory.auth.JwtService;
 import com.portfolio.inventory.catalog.*;
-import com.portfolio.inventory.purchase.StockPurchaseRepository;
+import com.portfolio.inventory.purchase.*;
 import com.portfolio.inventory.stock.InventoryStockRepository;
 import com.portfolio.inventory.user.*;
 import org.junit.jupiter.api.*;
@@ -37,8 +37,9 @@ class PurchaseStockIntegrationTest {
     @Autowired ProductRepository products;
     @Autowired SupplierRepository suppliers;
     @Autowired WarehouseRepository warehouses;
-    @Autowired StockPurchaseRepository purchases;
+    @Autowired PurchaseOrderRepository purchases;
     @Autowired InventoryStockRepository stocks;
+    @Autowired StockReceiptRepository receipts;
 
     String buyerToken;
     String managerToken;
@@ -49,6 +50,7 @@ class PurchaseStockIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        receipts.deleteAll();
         purchases.deleteAll();
         stocks.deleteAll();
         users.deleteAll();
@@ -78,6 +80,11 @@ class PurchaseStockIntegrationTest {
         receive(id, 6).andExpect(jsonPath("$.status").value("RECEIVED"))
                 .andExpect(jsonPath("$.items[0].outstandingQuantity").value(0));
         assertStockQuantity(10);
+        mvc.perform(get("/api/purchases/{id}/receipts", id)
+                        .header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].quantity").value(4))
+                .andExpect(jsonPath("$[1].quantity").value(6));
     }
 
     @Test

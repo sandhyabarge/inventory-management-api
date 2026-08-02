@@ -14,20 +14,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PurchaseService {
-    private final StockPurchaseRepository purchases;
+    private final PurchaseOrderRepository purchases;
     private final ProductRepository products;
     private final SupplierRepository suppliers;
     private final WarehouseRepository warehouses;
     private final InventoryStockRepository stocks;
+    private final StockReceiptRepository receipts;
 
-    public PurchaseService(StockPurchaseRepository purchases, ProductRepository products,
+    public PurchaseService(PurchaseOrderRepository purchases, ProductRepository products,
             SupplierRepository suppliers, WarehouseRepository warehouses,
-            InventoryStockRepository stocks) {
+            InventoryStockRepository stocks, StockReceiptRepository receipts) {
         this.purchases = purchases;
         this.products = products;
         this.suppliers = suppliers;
         this.warehouses = warehouses;
         this.stocks = stocks;
+        this.receipts = receipts;
     }
 
     @Transactional
@@ -41,11 +43,11 @@ public class PurchaseService {
                 .orElseThrow(() -> new NotFoundException("Active supplier not found"));
         Warehouse warehouse = warehouses.findById(request.warehouseId()).filter(Warehouse::isActive)
                 .orElseThrow(() -> new NotFoundException("Active warehouse not found"));
-        StockPurchase purchase = new StockPurchase(reference, supplier, warehouse, userEmail);
+        PurchaseOrder purchase = new PurchaseOrder(reference, supplier, warehouse, userEmail);
         for (PurchaseItemRequest item : request.items()) {
             Product product = products.findById(item.productId()).filter(Product::isActive)
                     .orElseThrow(() -> new NotFoundException("Active product not found: " + item.productId()));
-            purchase.addItem(new StockPurchaseItem(purchase, product, item.quantity(), item.unitCost()));
+            purchase.addItem(new PurchaseOrderItem(purchase, product, item.quantity(), item.unitCost()));
         }
         try {
             return PurchaseResponse.from(purchases.saveAndFlush(purchase));
@@ -61,14 +63,41 @@ public class PurchaseService {
 
     @Transactional(readOnly = true)
     public Page<PurchaseResponse> list(PurchaseStatus status, Pageable pageable) {
-        Page<StockPurchase> page = status == null ? purchases.findAll(pageable)
+        Page<PurchaseOrder> page = status == null ? purchases.findAll(pageable)
                 : purchases.findAllByStatus(status, pageable);
         return page.map(PurchaseResponse::from);
     }
 
     @Transactional
     public PurchaseResponse submit(Long id) {
-        return transition(id, StockPurchase::submit);
+        return transition(id, PurchaseOrder::submit);
+    }
+
+    @Transactional
+    public PurchaseResponse updateDraft(Long id, UpdateDraftRequest request) {
+        requireUniqueProductIds(request.items().stream().map(PurchaseItemRequest::productId).toList());
+        PurchaseOrder order = findForUpdate(id);
+        if (order.getStatus() != PurchaseStatus.DRAFT) {
+            throw new ConflictException("Only a draft purchase order can be edited");
+        }
+        Supplier supplier = suppliers.findById(request.supplierId()).filter(Supplier::isActive)
+                .orElseThrow(() -> new NotFoundException("Active supplier not found"));
+        Warehouse warehouse = warehouses.findById(request.warehouseId()).filter(Warehouse::isActive)
+                .orElseThrow(() -> new NotFoundException("Active warehouse not found"));
+        List<PurchaseOrderItem> items = request.items().stream().map(item -> {
+            Product product = products.findById(item.productId()).filter(Product::isActive)
+                    .orElseThrow(() -> new NotFoundException("Active product not found: " + item.productId()));
+            return new PurchaseOrderItem(order, product, item.quantity(), item.unitCost());
+        }).toList();
+        order.replaceDraftDetails(supplier, warehouse, items);
+        return PurchaseResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReceiptResponse> receipts(Long id) {
+        find(id);
+        return receipts.findAllByPurchaseOrderIdOrderByReceivedAtAsc(id).stream()
+                .map(ReceiptResponse::from).toList();
     }
 
     @Transactional
@@ -78,21 +107,21 @@ public class PurchaseService {
 
     @Transactional
     public PurchaseResponse cancel(Long id) {
-        return transition(id, StockPurchase::cancel);
+        return transition(id, PurchaseOrder::cancel);
     }
 
     @Transactional
-    public PurchaseResponse receive(Long id, ReceivePurchaseRequest request) {
+    public PurchaseResponse receive(Long id, ReceivePurchaseRequest request, String receiverEmail) {
         requireUniqueProductIds(request.items().stream().map(ReceiveItemRequest::productId).toList());
-        StockPurchase purchase = findForUpdate(id);
+        PurchaseOrder purchase = findForUpdate(id);
         if (purchase.getStatus() != PurchaseStatus.APPROVED
                 && purchase.getStatus() != PurchaseStatus.PARTIALLY_RECEIVED) {
             throw new ConflictException("Stock can be received only for an approved purchase order");
         }
-        Map<Long, StockPurchaseItem> orderedItems = new HashMap<>();
+        Map<Long, PurchaseOrderItem> orderedItems = new HashMap<>();
         purchase.getItems().forEach(item -> orderedItems.put(item.getProduct().getId(), item));
         for (ReceiveItemRequest received : request.items()) {
-            StockPurchaseItem item = orderedItems.get(received.productId());
+            PurchaseOrderItem item = orderedItems.get(received.productId());
             if (item == null) {
                 throw new BadRequestException("Product is not part of this purchase order: " + received.productId());
             }
@@ -110,13 +139,15 @@ public class PurchaseService {
                 throw new BadRequestException("Stock quantity is too large");
             }
             stocks.save(stock);
+            receipts.save(new StockReceipt(purchase, item.getProduct(),
+                    received.quantity(), receiverEmail));
         }
         purchase.refreshReceiptStatus();
         return PurchaseResponse.from(purchase);
     }
 
-    private PurchaseResponse transition(Long id, Consumer<StockPurchase> action) {
-        StockPurchase purchase = findForUpdate(id);
+    private PurchaseResponse transition(Long id, Consumer<PurchaseOrder> action) {
+        PurchaseOrder purchase = findForUpdate(id);
         try {
             action.accept(purchase);
         } catch (IllegalStateException ex) {
@@ -125,12 +156,12 @@ public class PurchaseService {
         return PurchaseResponse.from(purchase);
     }
 
-    private StockPurchase find(Long id) {
+    private PurchaseOrder find(Long id) {
         return purchases.findById(id)
                 .orElseThrow(() -> new NotFoundException("Purchase order not found"));
     }
 
-    private StockPurchase findForUpdate(Long id) {
+    private PurchaseOrder findForUpdate(Long id) {
         return purchases.findForUpdate(id)
                 .orElseThrow(() -> new NotFoundException("Purchase order not found"));
     }
