@@ -86,6 +86,19 @@ the same database transaction.
 
 ![Receiving stock against a purchase order](docs/receive%20purchase%20order.png)
 
+### Purchase-order cancellation rules
+
+An approved order can still be cancelled when no goods have been received. This provides a
+controlled way to stop an order before it changes warehouse inventory.
+
+![Cancelling an approved purchase order](docs/Cancel%20approved%20order.png)
+
+Once an order has been fully received, cancellation is rejected. This protects the audit
+trail and prevents the purchase-order status from becoming inconsistent with stock that has
+already entered the warehouse.
+
+![Received purchase order cannot be cancelled](docs/Can%20not%20cancel%20received%20purchase%20order.png)
+
 Purchase orders can be listed and filtered by workflow status for operational monitoring.
 
 ![Listing purchase orders](docs/List%20purchase%20orders.png)
@@ -112,6 +125,8 @@ stock accumulation, filtering and duplicate-reference handling.
 - Only inventory managers or administrators can approve and receive purchase orders.
 - Draft and approved quantities do not appear in available stock before receipt.
 - Receipt quantities cannot exceed the outstanding ordered quantity.
+- Draft, submitted and unreceived approved orders may be cancelled.
+- Partially or fully received orders cannot be cancelled.
 - Duplicate products and duplicate purchase references are rejected.
 - Stock receipt and purchase status changes are committed atomically.
 - Database locking protects receipt processing from concurrent updates.
