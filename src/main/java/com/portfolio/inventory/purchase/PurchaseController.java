@@ -4,7 +4,10 @@ import static com.portfolio.inventory.purchase.PurchaseDtos.*;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
-import org.springframework.http.*;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.*;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -14,17 +17,51 @@ import org.springframework.web.bind.annotation.*;
 public class PurchaseController {
     private final PurchaseService service;
 
-    public PurchaseController(PurchaseService service) {
-        this.service = service;
-    }
+    public PurchaseController(PurchaseService service) { this.service = service; }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('ADMIN', 'PURCHASING_AGENT')")
-    @Operation(summary = "Purchase and receive stock from a supplier",
-            description = "ADMIN or PURCHASING_AGENT. The received quantities immediately increase warehouse stock.")
-    public PurchaseResponse create(
-            @Valid @RequestBody CreatePurchaseRequest request, Authentication authentication) {
+    @Operation(summary = "Create a draft purchase order")
+    public PurchaseResponse create(@Valid @RequestBody CreatePurchaseRequest request,
+            Authentication authentication) {
         return service.create(request, authentication.getName());
     }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get a purchase order")
+    public PurchaseResponse get(@PathVariable Long id) { return service.get(id); }
+
+    @GetMapping
+    @Operation(summary = "List purchase orders")
+    public Page<PurchaseResponse> list(@RequestParam(required = false) PurchaseStatus status,
+            @ParameterObject @PageableDefault(size = 20, sort = "purchasedAt",
+                    direction = Sort.Direction.DESC) Pageable pageable) {
+        return service.list(status, pageable);
+    }
+
+    @PostMapping("/{id}/submit")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PURCHASING_AGENT')")
+    @Operation(summary = "Submit a draft purchase order")
+    public PurchaseResponse submit(@PathVariable Long id) { return service.submit(id); }
+
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INVENTORY_MANAGER')")
+    @Operation(summary = "Approve a submitted purchase order")
+    public PurchaseResponse approve(@PathVariable Long id, Authentication authentication) {
+        return service.approve(id, authentication.getName());
+    }
+
+    @PostMapping("/{id}/receive")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INVENTORY_MANAGER')")
+    @Operation(summary = "Receive some or all outstanding stock")
+    public PurchaseResponse receive(@PathVariable Long id,
+            @Valid @RequestBody ReceivePurchaseRequest request) {
+        return service.receive(id, request);
+    }
+
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PURCHASING_AGENT')")
+    @Operation(summary = "Cancel a draft, submitted, or approved purchase order")
+    public PurchaseResponse cancel(@PathVariable Long id) { return service.cancel(id); }
 }

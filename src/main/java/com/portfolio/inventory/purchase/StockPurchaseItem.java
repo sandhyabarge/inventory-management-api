@@ -19,6 +19,8 @@ public class StockPurchaseItem {
     private long quantity;
     @Column(name = "unit_cost", nullable = false, precision = 19, scale = 2)
     private BigDecimal unitCost;
+    @Column(name = "received_quantity", nullable = false)
+    private long receivedQuantity;
 
     protected StockPurchaseItem() {}
 
@@ -34,7 +36,17 @@ public class StockPurchaseItem {
         return unitCost.multiply(BigDecimal.valueOf(quantity));
     }
 
+    public void receive(long amount) {
+        if (amount <= 0 || amount > quantity - receivedQuantity) {
+            throw new IllegalArgumentException("Received quantity exceeds the outstanding quantity");
+        }
+        receivedQuantity += amount;
+    }
+
+    public boolean isFullyReceived() { return receivedQuantity == quantity; }
+
     public Product getProduct() { return product; }
     public long getQuantity() { return quantity; }
     public BigDecimal getUnitCost() { return unitCost; }
+    public long getReceivedQuantity() { return receivedQuantity; }
 }

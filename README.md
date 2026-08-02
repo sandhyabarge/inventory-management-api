@@ -25,7 +25,13 @@ Public registration deliberately cannot request an elevated role. An administrat
 | `GET` | `/api/catalog/products` | Authenticated | List 5 predefined products |
 | `GET` | `/api/catalog/suppliers` | Authenticated | List 3 predefined suppliers |
 | `GET` | `/api/catalog/warehouses` | Authenticated | List 3 predefined warehouses |
-| `POST` | `/api/purchases` | `ADMIN`, `PURCHASING_AGENT` | Purchase and immediately receive stock |
+| `POST` | `/api/purchases` | `ADMIN`, `PURCHASING_AGENT` | Create a draft purchase order |
+| `GET` | `/api/purchases` | Authenticated | List orders, optionally filtered by status |
+| `GET` | `/api/purchases/{id}` | Authenticated | View an order and receipt progress |
+| `POST` | `/api/purchases/{id}/submit` | `ADMIN`, `PURCHASING_AGENT` | Submit a draft |
+| `POST` | `/api/purchases/{id}/approve` | `ADMIN`, `INVENTORY_MANAGER` | Approve a submitted order |
+| `POST` | `/api/purchases/{id}/receive` | `ADMIN`, `INVENTORY_MANAGER` | Receive partial or full quantities |
+| `POST` | `/api/purchases/{id}/cancel` | `ADMIN`, `PURCHASING_AGENT` | Cancel an eligible order |
 | `GET` | `/api/stocks` | Authenticated | List available stock, with optional filters |
 | `GET` | `/actuator/health` | Public | Health check |
 
@@ -92,10 +98,35 @@ Example purchase:
 }
 ```
 
-Each reference must be unique. A successful purchase is received immediately, so its
-quantities are added to the selected warehouse in the same database transaction.
-List positive balances with `GET /api/stocks`, or filter with
+Each reference must be unique. Creating an order gives it `DRAFT` status and does not
+change inventory. Submit it, approve it, and receive stock through the workflow endpoints.
+Only received quantities are added to the selected warehouse. List positive balances with
+`GET /api/stocks`, or filter with
 `?warehouseId=1&productId=1`.
+
+### Purchase-order workflow
+
+```text
+DRAFT -> SUBMITTED -> APPROVED -> PARTIALLY_RECEIVED -> RECEIVED
+  |          |            |
+  +----------+------------+-> CANCELLED
+```
+
+Receive request example:
+
+```json
+{
+  "items": [
+    {
+      "productId": 1,
+      "quantity": 4
+    }
+  ]
+}
+```
+
+Further receipts may be posted until every ordered item is fully received. The API rejects
+unknown products, duplicate products in one receipt, over-receipt, and invalid transitions.
 
 ## Predefined catalog
 
@@ -167,7 +198,8 @@ The tests start an isolated `postgres:17-alpine` container and verify:
 - Request validation and Problem Details responses
 - Predefined products, suppliers, and warehouses
 - Purchasing-agent authorization
-- Immediate warehouse stock updates
+- Draft, submission, approval, cancellation, partial receipt, and full receipt transitions
+- Warehouse stock updates only when goods are received
 - Stock accumulation and filters
 - Duplicate purchase-reference rejection
 
